@@ -1,11 +1,136 @@
-#include<SPI.h>
+#include <SPI.h>
+#include <MFRC522.h>
 
-void setup() {
-  // put your setup code here, to run once:
+constexpr uint8_t RST_PIN = D3;
+constexpr uint8_t SS_PIN = D4;
+
+MFRC522 mfrc522(SS_PIN, RST_PIN);
+
+String code="";
+String UID="";
+int No;
+
+void write_UID()     //To read the data written on RFID
+{
+  
+  
+  }
+
+void read_UID()    //To write data on RFID
+{
+  code="";
+  UID="";
+   MFRC522::MIFARE_Key key;
+  for (byte i = 0; i < 6; i++) 
+    key.keyByte[i] = 0xFF;
+  byte block;
+  byte len;
+  Serial.println("Reading Card");
+  MFRC522::StatusCode status;
+  mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid)); //dump some details about the card
+  byte buffer1[18];
+
+  block = 4;
+  len = 18;
+  //*********************Get code*******************
+  
+  status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, 4, &key, &(mfrc522.uid)); //line 834 of MFRC522.cpp file
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print(F("Authentication failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    return;
+  }
+
+  status = mfrc522.MIFARE_Read(block, buffer1, &len);
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print(F("Reading failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    ESP.reset();
+    return;
+  }
+  for (uint8_t i = 0; i < 16; i++)
+  {
+    if (buffer1[i] != 32)
+    {
+      Serial.write(buffer1[i]);
+      code=code+char(buffer1[i]);
+    }
+  }
+  Serial.print(" ");
+
+  //****************Get Unique Number*****************************
+  
+  byte buffer2[18];
+  block = 1;
+
+  status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, 1, &key, &(mfrc522.uid)); //line 834
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print(F("Authentication failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    return;
+  }
+
+  status = mfrc522.MIFARE_Read(block, buffer2, &len);
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print(F("Reading failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    ESP.reset();
+    return;
+  }
+
+  for (uint8_t i = 0; i < 16; i++) {
+    Serial.write(buffer2[i] );
+    UID=UID+char(buffer2[i]);
+  }
+  //Serial.println(UID);
 
 }
 
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(115200);
+  SPI.begin();
+  mfrc522.PCD_Init();
+  
+}
+
 void loop() {
-  // put your main code here, to run repeatedly:
+
+  //Detect card
+  if ( ! mfrc522.PICC_IsNewCardPresent()) {
+    return;
+  }
+
+  // Select one of the cards
+  if ( ! mfrc522.PICC_ReadCardSerial()) {
+    return;
+  }
+  read_UID();
+  No=0;
+   Serial.println(UID.toInt());
+  
+  if(code=="tech")
+  {
+    No=UID.toInt();
+    Serial.println("Yes");
+    if(No>=01 && No<=2147483647)
+    {
+      Serial.println("Valid card");
+      //Send signal to relay and Rpi  
+  
+      }
+      else
+        {
+          Serial.println("Invalid Card");
+        }
+    }
+    else
+    {
+      Serial.println("Invalid Card"); 
+    }
+  delay(1000);   
+  mfrc522.PICC_HaltA();
+  mfrc522.PCD_StopCrypto1(); 
 
 }
