@@ -12,6 +12,56 @@ int No;
 
 void write_UID()     //To read the data written on RFID
 {
+ //*********************************Set UID*******************************************
+ byte buffer[34];
+  byte block;
+  MFRC522::StatusCode status;
+  byte len;
+
+  Serial.setTimeout(20000L) ;    
+  Serial.println(F("Unique Number, ending with #"));
+  len = Serial.readBytesUntil('#', (char *) buffer, 30) ; 
+  for (byte i = len; i < 30; i++) buffer[i] = ' ';     
+
+  block = 1;
+  status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, block, &key, &(mfrc522.uid));
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print(F("PCD_Authenticate() failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    return;
+  }
+  else Serial.println(F("PCD_Authenticate() success: "));
+  // Write block
+  status = mfrc522.MIFARE_Write(block, buffer, 16);
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print(F("MIFARE_Write() failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    return;
+  }
+  else Serial.println(F("MIFARE_Write() success: "));
+  
+  //****************************************Set Code************************************************************8
+  
+  block = 4;
+  status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, block, &key, &(mfrc522.uid));
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print(F("PCD_Authenticate() failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    return;
+  }
+
+  // Write block
+  buffer[0]=byte('t');
+  buffer[1]=byte('e');
+  buffer[2]=byte('c');
+  buffer[3]=byte('h');
+  status = mfrc522.MIFARE_Write(block, buffer , 16);
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print(F("MIFARE_Write() failed: "));
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    return;
+  }
+  else Serial.println(F("MIFARE_Write() success: "));
   
   
   }
@@ -108,7 +158,14 @@ void loop() {
   }
   read_UID();
   No=0;
-   Serial.println(UID.toInt());
+  Serial.println(UID.toInt());
+
+  //Interrupt From RPI
+//  if(Interrupt==true)
+//  {
+//  write_UID();
+//  }
+
   
   if(code=="tech")
   {
